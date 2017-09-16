@@ -1,6 +1,6 @@
 ---
 title: "STAT/MATH 495: Problem Set 02"
-author: "WRITE YOUR NAMES HERE"
+author: "Harrison Marick, Christien Wright"
 date: "2017-09-19"
 output:
   html_document:
@@ -16,30 +16,113 @@ knitr::opts_chunk$set(echo = TRUE, fig.width=8, fig.height=4.5)
 
 # Load packages
 library(tidyverse)
+library(broom)
+library(stats)
 
 # Note the relative file path, and not absolute file path:
 # http://www.coffeecup.com/help/articles/absolute-vs-relative-pathslinks/
-train <- read_csv("data/train.csv")
+train <- read_csv("data/train.csv") #load training data
+mac <- read_csv("data/macro.csv") #load macro-econ data
+test <- read_csv("data/test.csv") #load test data
 ```
 
 
 # Exploratory Data Analysis
 
-```{r}
+We initially joined the training data with the macroeconomic data using the timestamp column, so that we could access the proper macroeconomic data for a given day. The first variable we turned to, which ultimately was the variable we selected for our splines model, was full_sq, the total area of the house. Our intuition guided our exploration here, with the idea that bigger houses are more expensive than cheaper houses. 
 
+
+```{r}
+comb <-inner_join(train, mac, by="timestamp") #combine macro and training data with timestamp
+
+ggplot(comb, aes(full_sq, price_doc)) + geom_point() + ggtitle("Home Price by Area") #looking at scatterplot of full_sq (area) and price doc (home price)
 ```
+
+In the scatterplot of home area and price, we see one significant outlier, where the home are is very large, but the price is rather low. We figured it would be best to remove this point so as not to overfit the model to a training set with one significant outlier. While we ideally can learn on as big a set as possible, we also want to balance that with the risk of overfitting.
+
+
+```{r}
+comb2<-filter(comb, full_sq<=2000) #filters to remove out outlier
+
+ggplot(comb2, aes(full_sq, price_doc)) + geom_point() + ggtitle("Price by Area: Removed Outlier") #same scatterplot as above, but with outlier removed
+```
+
+
+After removing the outlier, we can see a generally positive trend between full_sq and price_doc. The trend appears to be somewhat linear, which we quantified with a correlation value of 0.56. While we are not fitting a linear model, a linear model is simply a cubic model, as in splines, with the coefficients for the squared and cubed terms equal to 0. A linear model is actually a very specific cubic model, in that sense. For this reason, the correlation value still is somewhat useful in guiding our variable selection. 
+
+```{r}
+cor(comb2$full_sq, comb2$price_doc) #correlation between full_sq and price_doc
+```
+
+
+We elected not to consider the economic variables, as we felt their impact on housing prices is more subtle than the actual characteristics of the homes. In addition to the structural characteristics, we felt the variables about the location of homes to be valuable, particularly full_all, the subarea population. At least in the US, population density is a significant determining factor in the price of a home or apartment. New York City, for instance, is known to have very expensive real estate. For the same price, you could get a much bigger home in a more rural area. 
+
+```{r}
+ggplot(comb2, aes(full_all, price_doc)) + geom_point() + ggtitle("Home Price by Subarea Population") #scatterplot of price and subarea population
+```
+
+
+Looking at the plot above, we see a banding effect for subareas with greater than 250,000 people. Given that there are so few subareas with that many people, it is difficult to make accurate predictions with so few densely populated areas. Even with the data we have for more sparsely populated regions, it is tough to find any trend here. As a result, we elected to not use full_all in our splines model.
+
+
+We conducted a similar analysis and exploration with other variables, but we ultimately felt that full_sq, the area of the home, would serve us best in predicting the price of the home. 
+
 
 
 # Model Fit
 
 ```{r}
-
+splines_model5 <- smooth.spline(x=comb2$full_sq, y=comb2$price_doc, df=5) #full_sq is predictor and df=5
+splines_model_tidy5 <- splines_model5 %>% 
+  broom::augment() 
+plot5 <- ggplot(splines_model_tidy5, aes(x=x)) +  
+  geom_point(aes(y=y)) + #plots full_sq vs price_doc
+  geom_line(aes(y=.fitted), col="blue") + #places fitted line over scatterplot
+  xlab("full_sq") +ylab("price_doc") + ggtitle("DF=5")
+plot5
 ```
+
+
+We chose to fit a splines model using full_sq, the total area of the home, as noted above. 
+
+We tuned the $df$ argument in a relatively unscientific manner, but we eventually settled on $df=10$. Notice in the graph above where $df=5$, the fitted line is rather stiff, and is not pliable enough to hit the points where full_sq falles in the 200-500 range. 
+
+
+```{r}
+splines_model20 <- smooth.spline(x=comb2$full_sq, y=comb2$price_doc, df=20) #full_sq is predictor and df=20
+splines_model_tidy20 <- splines_model20 %>% 
+  broom::augment() 
+plot20 <- ggplot(splines_model_tidy20, aes(x=x)) +  
+  geom_point(aes(y=y)) + #plots full_sq vs price_doc
+  geom_line(aes(y=.fitted), col="blue") + #places fitted line over scatterplot
+  xlab("full_sq") +ylab("price_doc") + ggtitle("DF=20")
+plot20
+```
+
+Notice the sharp turns in the fitted line of the model where $df=20$. While the line fits these points better than the model with $df=5$, there is a risk of overfitting to our training set here. We are more interested in the model learning overall trends, instead of unique changes specific to this training set. We like the look of the model with $df=10$, shown below. 
+
+
+```{r}
+splines_model <- smooth.spline(x=comb2$full_sq, y=comb2$price_doc, df=10) #full_sq is predictor and df=10
+splines_model_tidy <- splines_model %>% 
+  broom::augment() 
+plot <- ggplot(splines_model_tidy, aes(x=x)) +  
+  geom_point(aes(y=y)) + #plots full_sq vs price_doc
+  geom_line(aes(y=.fitted), col="blue") + #places fitted line over scatterplot
+  xlab("full_sq") +ylab("price_doc") + ggtitle("DF=5")
+plot
+```
+
+The graph remains relatively smooth while also doing a good job of fitting the points in the training set. Our thinking is that this model learns the training set best without overfitting. 
+
 
 
 # Create Submission File
 
 ```{r}
-
+x<-predict(splines_model, test$full_sq) #predicts on test set
+test$pred_price<-x[2]$y #stores predicted values in test dataframe
+submission<-data.frame(id=test$id, price_doc=test$pred_price) #create our submission frame
+write.csv(submission, "houses_submission.csv") #write to file
 ```
 
