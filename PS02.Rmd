@@ -27,6 +27,7 @@ test <- read_csv("data/test.csv") #load test data
 ```
 
 
+
 # Exploratory Data Analysis
 
 We initially joined the training data with the macroeconomic data using the timestamp column, so that we could access the proper macroeconomic data for a given day. The first variable we turned to, which ultimately was the variable we selected for our splines model, was full_sq, the total area of the house. Our intuition guided our exploration here, with the idea that bigger houses are more expensive than cheaper houses. 
