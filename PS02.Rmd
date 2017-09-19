@@ -38,7 +38,7 @@ comb <-inner_join(train, mac, by="timestamp") #combine macro and training data w
 ggplot(comb, aes(full_sq, price_doc)) + geom_point() + ggtitle("Home Price by Area") #looking at scatterplot of full_sq (area) and price doc (home price)
 ```
 
-In the scatterplot of home area and price, we see one significant outlier, where the home are is very large, but the price is rather low. We figured it would be best to remove this point so as not to overfit the model to a training set with one significant outlier. While we ideally can learn on as big a set as possible, we also want to balance that with the risk of overfitting.
+In the scatterplot of home area and price, we see one significant outlier, where the home is very large, but the price is rather low. We figured it would be best to remove this point so as not to overfit the model to a training set with one significant outlier. While we ideally can learn on as big a set as possible, we also want to balance that with the risk of overfitting.
 
 
 ```{r}
@@ -85,7 +85,7 @@ plot5
 
 We chose to fit a splines model using full_sq, the total area of the home, as noted above. 
 
-We tuned the $df$ argument in a relatively unscientific manner, but we eventually settled on $df=10$. Notice in the graph above where $df=5$, the fitted line is rather stiff, and is not pliable enough to hit the points where full_sq falles in the 200-500 range. 
+We tuned the $df$ argument in a relatively unscientific manner, but we eventually settled on $df=10$. Notice in the graph above where $df=5$, the fitted line is rather stiff, and is not pliable enough to hit the points where full_sq falles in the 200-500 range.
 
 
 ```{r}
@@ -99,7 +99,7 @@ plot20 <- ggplot(splines_model_tidy20, aes(x=x)) +
 plot20
 ```
 
-Notice the sharp turns in the fitted line of the model where $df=20$. While the line fits these points better than the model with $df=5$, there is a risk of overfitting to our training set here. We are more interested in the model learning overall trends, instead of unique changes specific to this training set. We like the look of the model with $df=10$, shown below. 
+Notice the sharp turns in the fitted line of the model where $df=20$. While the line fits these points better than the model with $df=5$, there is a risk of overfitting to our training set here. We are more interested in the model learning signal, instead of noise specific to this training set. We like the look of the model with $df=10$, shown below. 
 
 
 ```{r}
@@ -109,11 +109,11 @@ splines_model_tidy <- splines_model %>%
 plot <- ggplot(splines_model_tidy, aes(x=x)) +  
   geom_point(aes(y=y)) + #plots full_sq vs price_doc
   geom_line(aes(y=.fitted), col="blue") + #places fitted line over scatterplot
-  xlab("full_sq") +ylab("price_doc") + ggtitle("DF=5")
+  xlab("full_sq") +ylab("price_doc") + ggtitle("DF=10")
 plot
 ```
 
-The graph remains relatively smooth while also doing a good job of fitting the points in the training set. Our thinking is that this model learns the training set best without overfitting. 
+The graph remains relatively smooth while also doing a good job of fitting the points in the training set. Our thinking is that this model learns the training set best without overfitting. We also submitted models with varying degrees of freedom to Kaggle and $df=10$ yielded the lowest error rate, which solidifed our decision. 
 
 
 
